@@ -1,0 +1,2 @@
+document:
+  subtree: !include include-target.yml

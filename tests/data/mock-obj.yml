@@ -1,0 +1,3 @@
+    item: !estimator
+      (): test_skly.MockLoaded
+      setting: no
