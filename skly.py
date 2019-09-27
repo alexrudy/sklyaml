@@ -119,6 +119,7 @@ class Representer(yaml.SafeDumper):
 
     def represent_union(self, data):
         properties = data.get_params(deep=False)
+        properties['steps'] = dict(properties.pop("transformer_list", []))
         return self.represent_mapping("!union", properties)
 
     def represent_odict(self, data):
