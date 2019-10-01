@@ -2,6 +2,7 @@
 import pytest
 import yaml
 import skly
+from sklearn.base import BaseEstimator
 from pathlib import Path
 
 class YAMLFileFixtures:
@@ -29,7 +30,7 @@ def test_include(yamlexample):
         data = skly.load(f)
     assert data == {'document': {'subtree': {'other': 'hello!'}}}
     
-class MockLoaded:
+class MockLoaded(BaseEstimator):
 
     def __init__(self, setting=True):
         super().__init__()

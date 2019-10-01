@@ -34,23 +34,30 @@ def find_include(include, *paths):
         return candidate
     raise FileNotFoundError(f"Can't find incldue {include} in {paths!r}")
 
-
-TAGS = {}
-
-def tag(tagname):
-    def decorate(f):
-        TAGS[tagname] = f
-        return f
-
-    return decorate
-
-
+_PRELOAD_TAGS = []
 def register(loader):
-    for tag, constructor in TAGS.items():
+    global _PRELOAD_TAGS
+    for tag, constructor in _PRELOAD_TAGS:
         loader.add_constructor(tag, constructor)
+    _PRELOAD_TAGS = []
 
 
 class Loader(yaml.FullLoader):
+
+    def tag(cls, tag=None):
+
+        if tag is None:
+            cls, tag = None, cls
+        
+        def inner(f):
+            if cls is None:
+                _PRELOAD_TAGS.append((tag, f))
+            else:
+                cls.add_constructor(tag, f)
+            return f
+        
+        return inner
+            
 
     @tag("!include")
     def skl_construct_include(self, node):
@@ -97,9 +104,21 @@ class Loader(yaml.FullLoader):
             return functools.partial(f, *args, **kwargs)
         return f
 
+    tag = classmethod(tag)
+
 register(Loader)
 
 class Representer(yaml.SafeDumper):
+
+    @classmethod
+    def represents(dumper, cls, multi=False):
+        def inner(f):
+            if multi:
+                dumper.add_multi_representer(cls, f)
+            else:
+                dumper.add_representer(cls, f)
+            return f
+        return inner
 
     @staticmethod
     def _qualname(obj):
