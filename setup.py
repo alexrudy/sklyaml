@@ -7,5 +7,6 @@ setup(
     author_email="alex.rudy@bit.ly",
     description="BitlyIQ Data Science Tools",
     packages=find_packages(),
+    py_modules=['skly'],
     install_requires=["pyyaml", "scikit-learn", "pathlib;python_version<'3.3'"],
 )
