@@ -2,8 +2,10 @@ import functools
 import importlib
 from pathlib import Path
 from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.compose import ColumnTransformer
 from sklearn.base import BaseEstimator
 import warnings
+import numpy as np
 import copy
 from collections import OrderedDict
 
@@ -92,8 +94,16 @@ class Loader(yaml.FullLoader):
         return FeatureUnion(steps, **mapping)
 
     @tag("!resolve")
+    @tag("!class")
     def skl_construct_class(self, node):
         return resolve(self.construct_scalar(node))
+
+    @tag("!columns")
+    def skl_construct_column_transformer(self, node):
+        mapping = self.construct_mapping(node, deep=True)
+        transformers = mapping.pop('transformers')
+        return ColumnTransformer(transformers=transformers, **mapping)
+
 
     @tag("!function")
     def skl_construct_function(self, node):
@@ -129,6 +139,13 @@ class Representer(yaml.SafeDumper):
         properties = data.get_params(deep=False)
         properties['steps'] =  OrderedDict(properties['steps'])
         return self.represent_mapping("!pipeline", properties)
+
+    def represent_column_transformer(self, data):
+
+        properties = data.get_params(deep=False)
+        transformers = getattr(data, 'transformers_', data.transformers)
+        properties['transformers'] = [{'name': name, 'estimator': estimator, 'columns': columns} for name, estimator, columns in transformers]
+        return self.represent_mapping("!columns", properties)
         
     def represent_estimator(self, data):
         properties = data.get_params(deep=False)
@@ -144,11 +161,16 @@ class Representer(yaml.SafeDumper):
     def represent_odict(self, data):
         return self.represent_mapping(self.DEFAULT_MAPPING_TAG, data.items())
 
+    def represent_class(self, data):
+        return self.represent_scalar("!class", "{}.{}".format(data.__module__, data.__qualname__))
+
 
 Representer.add_multi_representer(BaseEstimator, Representer.represent_estimator)
 Representer.add_representer(Pipeline, Representer.represent_pipeline)
 Representer.add_representer(FeatureUnion, Representer.represent_union)
 Representer.add_representer(OrderedDict, Representer.represent_odict)
+Representer.add_multi_representer(ColumnTransformer, Representer.represent_column_transformer)
+Representer.add_multi_representer(type, Representer.represent_class)
 
 load = functools.partial(yaml.load, Loader=Loader)
 dump = functools.partial(yaml.dump, Dumper=Representer)
